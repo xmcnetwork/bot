@@ -1,0 +1,94 @@
+type MojangErrorData =
+  | {
+      path: string;
+      errorMessage: string;
+    }
+  | {
+      error: string;
+      errorMessage: string;
+    };
+
+export interface GetAPIUsernameToUUIDResult {
+  name: string;
+  id: string;
+  legacy?: true;
+  demo?: true;
+}
+
+export const getMinecraftPlayer = async (ign: string) => {
+  const response = await fetch(
+    `https://api.mojang.com/users/profiles/minecraft/${ign}`,
+    { method: "GET" },
+  );
+  if (!response.ok) {
+    const data = (await response.json()) as MojangErrorData;
+    throw new Error(`[${response.status}] ${data.errorMessage}`);
+  }
+  if (response.status === 204) {
+    throw new Error("Failed to fetch player");
+  }
+  const data = (await response.json()) as GetAPIUsernameToUUIDResult;
+  return data;
+};
+
+export const hyphenateUUID = (uuid: string) => {
+  return uuid.replace(/^(\S{8})(\S{4})(\S{4})(\S{4})(.*)$/, "$1-$2-$3-$4-$5");
+};
+
+// We host our own instance, and we suggest you do too
+// https://github.com/crafatar/crafatar/issues/322
+const CRAFATAR_HOST = process.env.CRAFATAR_HOST ?? "https://crafatar.com";
+
+export const getMinecraftPlayerSkinUrl = (
+  /** The UUID of the player. */
+  uuid: string,
+  // Option descriptions (and the service itself): https://crafatar.com
+  options: {
+    /**
+     * The render type to use. `face` is a 2D front-facing image, `head` and
+     * `body` are 3D isometric views.
+     */
+    render: "head" | "body" | "face";
+    /**
+     * If `render` is `face`, the size of the square image in pixels,
+     * from 1-512. Otherwise, the scale factor from 1-10.
+     *
+     * For 3D renders, scale `1` is 20px wide and scale `10` is 200px wide.
+     * The default render (scale `6`) is 120px wide.
+     *
+     * @default 160
+     */
+    size?: number;
+    /**
+     * Whether to apply the overlay to the avatar.
+     *
+     * @default true
+     */
+    overlay?: boolean;
+    /**
+     * The fallback to be used when the requested image cannot be served. You
+     * can use a custom URL, any UUID, or `MHF_Steve`/`MHF_Alex`.
+     *
+     * @default string - Steve or Alex based on UUID
+     */
+    fallback?: string;
+  },
+) => {
+  const url = new URL(
+    `${CRAFATAR_HOST}/${
+      options.render === "face" ? "avatars" : `renders/${options.render}`
+    }/${uuid}`,
+  );
+  if (options.size && options.render === "face") {
+    url.searchParams.set("size", options.size.toString());
+  } else if (options.size) {
+    url.searchParams.set("scale", options.size.toString());
+  }
+  if (options.overlay !== false) {
+    url.searchParams.set("overlay", `${options.overlay ?? true}`);
+  }
+  if (options.fallback) {
+    url.searchParams.set("default", options.fallback);
+  }
+  return url.href;
+};

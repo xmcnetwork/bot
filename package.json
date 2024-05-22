@@ -1,0 +1,25 @@
+{
+  "name": "xmc-bot",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "repository": "https://github.com/xmcnetwork/bot",
+  "author": "shayypy",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "register": "tsx scripts/register.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.7.3"
+  },
+  "dependencies": {
+    "@types/ssh2-sftp-client": "^9.0.3",
+    "discord.js": "^14.15.2",
+    "dotenv": "^16.4.5",
+    "nodeactyl": "^3.3.0",
+    "ssh2-sftp-client": "^10.0.3",
+    "tsx": "^4.10.5",
+    "ws": "^8.17.0"
+  }
+}
