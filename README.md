@@ -6,7 +6,7 @@
 ENVIRONMENT             # dev or production
 APPLICATION_ID
 BOT_TOKEN
-DEVELOPMENT_GUILD_ID    # optional
+GUILD_ID                # recommended
 APPLICATIONS_CHAT_ID
 APPLICATIONS_REVIEWER_ROLE_ID
 CRAFATAR_HOST           # origin of your crafatar instance
