@@ -134,14 +134,17 @@ module.exports = {
       return;
     }
 
-    await interaction.showModal(modalStep1);
+    const modal1 = modalStep1.toJSON();
+    // Prevent unfulfilled interaction awaiters from catching this modal
+    // response and attempting to respond to it
+    modal1.custom_id += `:${String(Math.floor(Math.random() * 100000))}`;
 
+    await interaction.showModal(modal1);
     let mInteraction1: ModalSubmitInteraction;
     try {
       mInteraction1 = await interaction.awaitModalSubmit({
         filter: (i) =>
-          i.customId === modalStep1.data.custom_id &&
-          i.user === interaction.user,
+          i.customId === modal1.custom_id && i.user === interaction.user,
         dispose: true,
         // 1 hour
         time: 3_600_000,
@@ -306,13 +309,13 @@ module.exports = {
     }
 
     const modal2 = modalStep2.toJSON();
+    modal2.custom_id += `:${String(Math.floor(Math.random() * 100000))}`;
     await step2Interaction.showModal(modal2);
     let mInteraction2: ModalSubmitInteraction;
     try {
       mInteraction2 = await interaction.awaitModalSubmit({
         filter: (i) =>
-          i.customId === modalStep2.data.custom_id &&
-          i.user === interaction.user,
+          i.customId === modal2.custom_id && i.user === interaction.user,
         dispose: true,
         // 1 hour
         time: 3_600_000,
