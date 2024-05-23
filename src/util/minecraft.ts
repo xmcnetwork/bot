@@ -1,5 +1,11 @@
-import type { Message } from "discord.js";
+import {
+  EmbedBuilder,
+  type AutocompleteInteraction,
+  type Message,
+} from "discord.js";
 import type { ApplicationEmbedPayload } from "../components/apply";
+import type { BotClient } from "..";
+import { color } from "./meta";
 
 type MojangErrorData =
   | {
@@ -18,6 +24,25 @@ export interface GetAPIUsernameToUUIDResult {
   demo?: true;
 }
 
+export enum MinecraftProfileAction {
+  ForcedNameChange = "FORCED_NAME_CHANGE",
+  UsingBannedSkin = "USING_BANNED_SKIN",
+}
+
+export interface GetAPIUUIDToProfileResult {
+  name: string;
+  id: string;
+  legacy?: true;
+  properties: {
+    name: "textures";
+    value: string;
+    signature?: string;
+  }[];
+  profileActions: MinecraftProfileAction[];
+}
+
+export type PlayerInfo = GetAPIUUIDToProfileResult | GetAPIUsernameToUUIDResult;
+
 export const getMinecraftPlayer = async (ign: string) => {
   const response = await fetch(
     `https://api.mojang.com/users/profiles/minecraft/${ign}`,
@@ -31,6 +56,22 @@ export const getMinecraftPlayer = async (ign: string) => {
     throw new Error("Failed to fetch player");
   }
   const data = (await response.json()) as GetAPIUsernameToUUIDResult;
+  return data;
+};
+
+export const getMinecraftUUIDProfile = async (uuid: string) => {
+  const response = await fetch(
+    `https://sessionserver.mojang.com/session/minecraft/profile/${uuid}`,
+    { method: "GET" },
+  );
+  if (!response.ok) {
+    const data = (await response.json()) as MojangErrorData;
+    throw new Error(`[${response.status}] ${data.errorMessage}`);
+  }
+  if (response.status === 204) {
+    throw new Error("Failed to fetch profile");
+  }
+  const data = (await response.json()) as GetAPIUUIDToProfileResult;
   return data;
 };
 
@@ -101,3 +142,63 @@ export const extractApplicationData = (message: Message) => {
     new URL(message.embeds[0].url ?? "").searchParams.get("data") ?? "",
   ) as ApplicationEmbedPayload;
 };
+
+export const autocompletePlayerName = async (
+  interaction: AutocompleteInteraction,
+  optionName: string,
+) => {
+  const client = interaction.client as BotClient<true>;
+  const option = interaction.options.getFocused(true);
+  if (option.name !== optionName) {
+    await interaction.respond([]);
+    return;
+  }
+
+  const query = option.value;
+  const matches = Array.from(client.players.values()).filter((cached) =>
+    cached.name.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  await interaction.respond(
+    matches
+      .map((match) => ({
+        name: match.name,
+        value: `uuid:${match.uuid}`,
+      }))
+      .sort((a, b) => (a.name > b.name ? 1 : -1))
+      .slice(0, 25),
+  );
+};
+
+export const resolvePlayerValue = async (
+  value: string,
+): Promise<PlayerInfo> => {
+  if (value.startsWith("uuid:")) {
+    return await getMinecraftUUIDProfile(
+      value.replace(/^uuid:/, "").replace(/-/g, ""),
+    );
+  }
+  if (value.length > 25 || value.length < 1) {
+    throw Error("1-25 characters required for a valid username.");
+  }
+  return await getMinecraftPlayer(value);
+};
+
+export const generateApplicationDataEmbed = (data: ApplicationEmbedPayload) =>
+  new EmbedBuilder()
+    .setColor(color)
+    .setURL(
+      `http://localhost/?${new URLSearchParams({
+        data: JSON.stringify(data),
+      })}`,
+    )
+    .setDescription(
+      [
+        `Hey **${data.name}**, this is your application thread.\n\n`,
+        "The role that was pinged above is our team of application reviewers. ",
+        "Your application will be briefly discussed and then voted on in private.",
+      ].join(""),
+    )
+    .setThumbnail(
+      data.id ? getMinecraftPlayerSkinUrl(data.id, { render: "head" }) : null,
+    );

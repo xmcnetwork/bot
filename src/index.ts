@@ -1,6 +1,7 @@
 import {
   ActivityType,
   ApplicationCommandType,
+  type AutocompleteInteraction,
   Client,
   Collection,
   type CommandInteraction,
@@ -13,6 +14,12 @@ import {
 import dotenv from "dotenv";
 import fs from "node:fs/promises";
 import path from "node:path";
+import {
+  getSftpClient,
+  type MinecraftServerBan,
+  type MinecraftServerUserCacheItem,
+  type MinecraftServerWhitelistItem,
+} from "./util/sftp";
 // import { NodeactylClient } from "nodeactyl";
 // import { WebSocket } from "ws";
 
@@ -21,6 +28,7 @@ dotenv.config();
 export interface CommandModule {
   data: SlashCommandBuilder | ContextMenuCommandBuilder;
   execute: (interaction: CommandInteraction) => Promise<void>;
+  autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
 }
 
 export interface ComponentModule {
@@ -37,7 +45,7 @@ if (PTERODACTYL_HOST && PTERODACTYL_KEY && !PTERODACTYL_SERVER_ID) {
   );
 }
 
-export class BotClient<ready extends boolean> extends Client<ready> {
+export class BotClient<ready extends boolean = boolean> extends Client<ready> {
   public commands: Record<
     ApplicationCommandType,
     Collection<string, CommandModule>
@@ -45,6 +53,16 @@ export class BotClient<ready extends boolean> extends Client<ready> {
   public persistentComponents: Collection<string, ComponentModule>;
   // public ptero: NodeactylClient | undefined;
   // public serverStatus: PterodactylStats | undefined;
+  public players: Collection<
+    string,
+    {
+      uuid: string;
+      name: string;
+      //expires: Date;
+    }
+  >;
+  public serverWhitelist: MinecraftServerWhitelistItem[];
+  public serverBans: MinecraftServerBan[];
 
   constructor() {
     super({
@@ -70,6 +88,9 @@ export class BotClient<ready extends boolean> extends Client<ready> {
       [ApplicationCommandType.User]: new Collection(),
     };
     this.persistentComponents = new Collection();
+    this.players = new Collection();
+    this.serverWhitelist = [];
+    this.serverBans = [];
 
     if (PTERODACTYL_HOST && PTERODACTYL_KEY) {
       // this.ptero = new NodeactylClient(PTERODACTYL_HOST, PTERODACTYL_KEY);
@@ -87,25 +108,37 @@ client.once(Events.ClientReady, (readyClient) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
-  if (interaction.isCommand()) {
+  if (interaction.isCommand() || interaction.isAutocomplete()) {
     const module = client.commands[interaction.commandType].get(
       interaction.commandName,
     );
     if (module) {
-      try {
-        await module.execute(interaction);
-      } catch (error) {
-        console.error(error);
-        if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({
-            content: "Something failed. This has been logged.",
-            ephemeral: true,
-          });
-        } else {
-          await interaction.reply({
-            content: "Something failed. This has been logged.",
-            ephemeral: true,
-          });
+      if (interaction.isAutocomplete()) {
+        if (!module.autocomplete) {
+          await interaction.respond([]);
+          return;
+        }
+        try {
+          await module.autocomplete(interaction);
+        } catch (error) {
+          console.error(error);
+        }
+      } else {
+        try {
+          await module.execute(interaction);
+        } catch (error) {
+          console.error(error);
+          if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({
+              content: "Something failed. This has been logged.",
+              ephemeral: true,
+            });
+          } else {
+            await interaction.reply({
+              content: "Something failed. This has been logged.",
+              ephemeral: true,
+            });
+          }
         }
       }
     }
@@ -174,6 +207,51 @@ client.on(Events.InteractionCreate, async (interaction) => {
         `[WARNING] The component at ${filePath} is missing a required "customId" or "execute" property.`,
       );
     }
+  }
+
+  // Server cache
+  try {
+    console.log("[SFTP] Connecting");
+    const sftp = await getSftpClient();
+    console.log("[SFTP] Caching usercache.json");
+    try {
+      // This is used for autocomplete
+      const usercache = JSON.parse(
+        (await sftp.get("/usercache.json")) as string,
+      ) as MinecraftServerUserCacheItem[];
+      for (const user of usercache) {
+        client.players.set(user.uuid.replace(/-/g, ""), {
+          uuid: user.uuid,
+          name: user.name,
+          // expires: new Date(user.expiresOn),
+        });
+      }
+    } catch (e) {
+      // Might not exist, we don't need it
+      console.error(e);
+    }
+    console.log("[SFTP] Caching whitelist.json");
+    try {
+      const whitelist = JSON.parse(
+        (await sftp.get("/whitelist.json")) as string,
+      ) as MinecraftServerWhitelistItem[];
+      client.serverWhitelist = whitelist;
+    } catch (e) {
+      console.error(e);
+    }
+    console.log("[SFTP] Caching banned-players.json");
+    try {
+      const bans = JSON.parse(
+        (await sftp.get("/banned-players.json")) as string,
+      ) as MinecraftServerBan[];
+      client.serverBans = bans;
+    } catch (e) {
+      console.error(e);
+    }
+    console.log("[SFTP] Disconnecting");
+    await sftp.end();
+  } catch (e) {
+    console.error(e);
   }
 
   // Pterodactyl server interop
