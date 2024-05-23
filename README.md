@@ -10,6 +10,7 @@ DEVELOPMENT_GUILD_ID    # optional
 APPLICATIONS_CHAT_ID
 APPLICATIONS_REVIEWER_ROLE_ID
 CRAFATAR_HOST           # origin of your crafatar instance
+WELCOME_WEBHOOK_URL     # welcomes accepted applicants in the member-only general channel
 
 SFTP_HOST
 SFTP_PORT               # defaults to 7677 for dedicatedmc.io servers

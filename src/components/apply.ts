@@ -13,8 +13,11 @@ import {
   ChannelType,
   EmbedBuilder,
   spoiler,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
 } from "discord.js";
 import {
+  generateApplicationDataEmbed,
   type GetAPIUsernameToUUIDResult,
   getMinecraftPlayer,
   getMinecraftPlayerSkinUrl,
@@ -47,8 +50,9 @@ const modalStep1 = new ModalBuilder()
         .setLabel("Age")
         .setCustomId("age")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("Your real-life age, or an age range (e.g. 18+)")
+        .setPlaceholder("Your real-life age or general age range (e.g. 18+)")
         .setRequired(true)
+        .setMinLength(2)
         .setMaxLength(100),
     ),
   );
@@ -279,12 +283,19 @@ module.exports = {
 
     let step2Interaction: MessageComponentInteraction;
     try {
+      // I want this to continue listening in case the user closes the modal
+      // by accident and wants to re-open it, but the code structure just
+      // isn't right for it
       step2Interaction = await message.awaitMessageComponent({
         dispose: false,
         // 10 minutes
         time: 600_000,
       });
     } catch {
+      await mInteraction1.editReply({
+        content: "Timed out, press the apply button again to start over.",
+        components: [],
+      });
       return;
     }
 
@@ -305,7 +316,7 @@ module.exports = {
       return;
     }
 
-    await mInteraction2.deferReply({ ephemeral: true });
+    await mInteraction2.deferUpdate();
     const thread = await interaction.channel.threads.create({
       name: `⏳ ${playerInfo?.name ?? ign}`.slice(0, 100),
       type: ChannelType.PrivateThread,
@@ -367,40 +378,29 @@ module.exports = {
       }
     }
 
-    await thread.send({
+    const dataMessage = await thread.send({
       content: "_ _",
       embeds: [
-        new EmbedBuilder()
-          .setColor(color)
-          .setURL(
-            `http://localhost/?${new URLSearchParams({
-              data: JSON.stringify({
-                user: interaction.user.id,
-                id: playerInfo?.id,
-                name: playerInfo?.name ?? ign,
-                values: valueMessages,
-              } satisfies ApplicationEmbedPayload),
-            })}`,
-          )
-          .setDescription(
-            [
-              `Hey **${
-                playerInfo?.name ?? ign
-              }**, this is your application thread.\n\n`,
-              "The role that was pinged above is our team of application reviewers. ",
-              "Your application will be briefly discussed and then voted on in private.",
-            ].join(""),
-          )
-          .setThumbnail(
-            playerInfo
-              ? getMinecraftPlayerSkinUrl(playerInfo.id, {
-                  render: "head",
-                  size: 10,
-                })
-              : null,
-          ),
+        generateApplicationDataEmbed({
+          user: interaction.user.id,
+          id: playerInfo?.id,
+          name: playerInfo?.name ?? ign,
+          values: valueMessages,
+        }),
       ],
       components: [
+        new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder()
+            .setPlaceholder("Application options")
+            .setCustomId("persistent:apply:modify")
+            .addOptions(
+              new StringSelectMenuOptionBuilder()
+                .setLabel("Change IGN")
+                .setDescription("If you entered your username incorrectly")
+                .setValue("ign")
+                .setEmoji({ name: "✍️" }),
+            ),
+        ),
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
             .setStyle(ButtonStyle.Primary)
@@ -413,10 +413,14 @@ module.exports = {
         ),
       ],
     });
+    try {
+      await dataMessage.pin();
+    } catch {}
 
     await thread.members.add(interaction.user, "Applicant");
     await mInteraction2.editReply({
       content: `Great job! Your application thread has been created: <#${thread.id}>`,
+      components: [],
     });
   },
 };
