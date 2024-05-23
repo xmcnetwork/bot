@@ -106,12 +106,7 @@ module.exports = {
         url: process.env.WELCOME_WEBHOOK_URL,
       });
       await webhook.send({
-        content: `Please welcome <@${data.user}> (**${
-          data.name
-        }**)! There are now ${(
-          guild.roles.cache.get(process.env.MEMBER_ROLE_ID ?? "")?.members
-            .size ?? "--"
-        ).toLocaleString()} members.`,
+        content: `Please welcome <@${data.user}> (**${data.name}**)!`,
         allowedMentions: {
           users: [data.user],
         },
