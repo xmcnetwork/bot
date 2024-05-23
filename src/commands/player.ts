@@ -14,14 +14,14 @@ import {
   hyphenateUUID,
   type PlayerInfo,
   resolvePlayerValue,
-} from "../util/minecraft";
+} from "../util/minecraft.js";
 import {
   getSftpClient,
   type MinecraftServerBan,
   type MinecraftServerWhitelistItem,
-} from "../util/sftp";
-import { color, getEmoji } from "../util/meta";
-import type { BotClient } from "..";
+} from "../util/sftp.js";
+import { color, getEmoji } from "../util/meta.js";
+import type { BotClient } from "../index.js";
 
 module.exports = {
   data: new SlashCommandBuilder()

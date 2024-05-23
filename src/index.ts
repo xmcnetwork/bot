@@ -19,7 +19,7 @@ import {
   type MinecraftServerBan,
   type MinecraftServerUserCacheItem,
   type MinecraftServerWhitelistItem,
-} from "./util/sftp";
+} from "./util/sftp.js";
 // import { NodeactylClient } from "nodeactyl";
 // import { WebSocket } from "ws";
 

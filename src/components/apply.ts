@@ -12,7 +12,6 @@ import {
   type MessageComponentInteraction,
   ChannelType,
   EmbedBuilder,
-  spoiler,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
 } from "discord.js";
@@ -20,14 +19,13 @@ import {
   generateApplicationDataEmbed,
   type GetAPIUsernameToUUIDResult,
   getMinecraftPlayer,
-  getMinecraftPlayerSkinUrl,
-} from "../util/minecraft";
+} from "../util/minecraft.js";
 import {
   getSftpClient,
   type MinecraftServerBan,
   type MinecraftServerWhitelistItem,
-} from "../util/sftp";
-import { color } from "../util/meta";
+} from "../util/sftp.js";
+import { color } from "../util/meta.js";
 
 const modalStep1 = new ModalBuilder()
   .setTitle("Apply - Step 1/2")

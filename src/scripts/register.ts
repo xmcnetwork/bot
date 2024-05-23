@@ -6,7 +6,7 @@ import {
 import path from "node:path";
 import fs from "node:fs/promises";
 import dotenv from "dotenv";
-import type { CommandModule } from "../src";
+import type { CommandModule } from "../index.js";
 
 dotenv.config();
 

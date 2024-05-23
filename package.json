@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "start": "tsx src/index.ts",
-    "register": "tsx scripts/register.ts"
+    "register": "tsx src/scripts/register.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.7.3",

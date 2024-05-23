@@ -9,13 +9,13 @@ import {
   Routes,
   type RESTPatchAPIGuildMemberJSONBody,
 } from "discord.js";
-import type { ApplicationEmbedPayload } from "./apply";
+import type { ApplicationEmbedPayload } from "./apply.js";
 import {
   extractApplicationData,
   generateApplicationDataEmbed,
   getMinecraftPlayer,
   type PlayerInfo,
-} from "../util/minecraft";
+} from "../util/minecraft.js";
 
 module.exports = {
   customId: "apply:modify",

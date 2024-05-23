@@ -3,9 +3,9 @@ import {
   type AutocompleteInteraction,
   type Message,
 } from "discord.js";
-import type { ApplicationEmbedPayload } from "../components/apply";
-import type { BotClient } from "..";
-import { color } from "./meta";
+import type { ApplicationEmbedPayload } from "../components/apply.js";
+import type { BotClient } from "../index.js";
+import { color } from "./meta.js";
 
 type MojangErrorData =
   | {

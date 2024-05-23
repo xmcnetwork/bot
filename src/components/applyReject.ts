@@ -3,11 +3,9 @@ import {
   ChannelType,
   PermissionFlagsBits,
   type GuildMember,
-  EmbedBuilder,
 } from "discord.js";
-import { color } from "../util/meta";
-import type { ApplicationEmbedPayload } from "./apply";
-import { extractApplicationData } from "../util/minecraft";
+import type { ApplicationEmbedPayload } from "./apply.js";
+import { extractApplicationData } from "../util/minecraft.js";
 
 module.exports = {
   customId: "apply:reject",
