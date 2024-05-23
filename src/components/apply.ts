@@ -384,8 +384,11 @@ module.exports = {
       }
     }
 
+    // This creates a system message that we use to separate the form response
+    // messages from the data message
+    await thread.members.add(interaction.user, "Applicant");
+
     const dataMessage = await thread.send({
-      content: "_ _",
       embeds: [
         generateApplicationDataEmbed({
           user: interaction.user.id,
@@ -423,7 +426,6 @@ module.exports = {
       await dataMessage.pin();
     } catch {}
 
-    await thread.members.add(interaction.user, "Applicant");
     await mInteraction2.editReply({
       content: `Great job! Your application thread has been created: <#${thread.id}>`,
       components: [],
