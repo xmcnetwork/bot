@@ -4,6 +4,7 @@ import {
   PermissionFlagsBits,
   type GuildMember,
   EmbedBuilder,
+  WebhookClient,
 } from "discord.js";
 import { color } from "../util/meta";
 import type { ApplicationEmbedPayload } from "./apply";
@@ -99,5 +100,22 @@ module.exports = {
       archived: true,
       locked: true,
     });
+
+    if (process.env.WELCOME_WEBHOOK_URL) {
+      const webhook = new WebhookClient({
+        url: process.env.WELCOME_WEBHOOK_URL,
+      });
+      await webhook.send({
+        content: `Please welcome <@${data.user}> (**${
+          data.name
+        }**)! There are now ${(
+          guild.roles.cache.get(process.env.MEMBER_ROLE_ID ?? "")?.members
+            .size ?? "--"
+        ).toLocaleString()} members.`,
+        allowedMentions: {
+          users: [data.user],
+        },
+      });
+    }
   },
 };
