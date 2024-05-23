@@ -30,7 +30,7 @@ module.exports = {
       option
         .setName("ign")
         .setDescription("The player's in-game username")
-        .setMaxLength(30)
+        .setMaxLength(25)
         .setRequired(true),
     ),
   async execute(interaction: ChatInputCommandInteraction) {

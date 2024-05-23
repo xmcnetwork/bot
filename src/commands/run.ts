@@ -22,6 +22,7 @@ module.exports = {
               option
                 .setName("name")
                 .setDescription("The player's IGN")
+                .setMaxLength(25)
                 .setRequired(true),
             ),
         )
@@ -33,6 +34,7 @@ module.exports = {
               option
                 .setName("name")
                 .setDescription("The player's IGN")
+                .setMaxLength(25)
                 .setRequired(true),
             ),
         )
@@ -60,6 +62,7 @@ module.exports = {
               option
                 .setName("name")
                 .setDescription("The player's IGN")
+                .setMaxLength(25)
                 .setRequired(true),
             )
             .addStringOption((option) =>
@@ -77,6 +80,7 @@ module.exports = {
               option
                 .setName("name")
                 .setDescription("The player's IGN")
+                .setMaxLength(25)
                 .setRequired(true),
             ),
         )

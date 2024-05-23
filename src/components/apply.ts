@@ -37,7 +37,10 @@ const modalStep1 = new ModalBuilder()
         .setStyle(TextInputStyle.Short)
         .setPlaceholder("Your Minecraft Java Edition username")
         .setRequired(true)
-        .setMaxLength(30),
+        // size must be between 1 and 25, getProfileName.name: Invalid profile name
+        // -- api.mojang.com
+        .setMinLength(1)
+        .setMaxLength(25),
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
       new TextInputBuilder()
