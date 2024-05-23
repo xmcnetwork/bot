@@ -19,7 +19,7 @@ import {
   type MinecraftServerBan,
   type MinecraftServerWhitelistItem,
 } from "../util/sftp";
-import { color } from "../util/meta";
+import { color, getEmoji } from "../util/meta";
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -46,17 +46,26 @@ module.exports = {
       return;
     }
 
+    const hyphenated = hyphenateUUID(playerInfo.id);
     const embed = new EmbedBuilder()
       .setTitle(playerInfo.name)
       .setColor(color)
       .setThumbnail(
         getMinecraftPlayerSkinUrl(playerInfo.id, { render: "body" }),
       )
-      .addFields({
-        name: "UUID",
-        value: inlineCode(hyphenateUUID(playerInfo.id)),
-      })
-      .setFooter({ text: "Skin render from crafatar.com" });
+      .addFields(
+        {
+          name: "Whitelisted",
+          value: getEmoji("loading"),
+          inline: true,
+        },
+        {
+          name: "Banned",
+          value: getEmoji("loading"),
+          inline: true,
+        },
+      )
+      .setFooter({ text: `ID: ${hyphenated}` });
 
     await interaction.editReply({
       embeds: [embed],
@@ -79,18 +88,13 @@ module.exports = {
         (await sftp.get("/banned-players.json")) as string,
       ) as MinecraftServerBan[];
 
-      const ban = bans.find(
-        (item) => item.uuid.replace("-", "") === playerInfo.id,
-      );
+      const ban = bans.find((item) => item.uuid === hyphenated);
 
-      embed.addFields(
+      embed.setFields(
         {
           name: "Whitelisted",
-          value: whitelist
-            .map((item) => item.uuid.replace("-", ""))
-            .includes(playerInfo.id)
-            ? "Yes"
-            : "No",
+          value: getEmoji(!!whitelist.find((item) => item.uuid === hyphenated)),
+          inline: true,
         },
         {
           name: "Banned",
@@ -105,7 +109,8 @@ module.exports = {
                 `By: ${ban.source}`,
                 ban.reason ? `Reason:\n> ${ban.reason}` : "",
               ].join("\n")
-            : "No",
+            : getEmoji(false),
+          inline: !ban,
         },
       );
 
