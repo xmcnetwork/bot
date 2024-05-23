@@ -80,6 +80,16 @@ module.exports = {
 
     // TODO: run server command through pterodactyl websocket
 
+    if (
+      process.env.MEMBER_ROLE_ID &&
+      !member.roles.cache.has(process.env.MEMBER_ROLE_ID)
+    ) {
+      await member.roles.add(
+        process.env.MEMBER_ROLE_ID,
+        `Whitelisted by ${interaction.user.tag} (${interaction.user.id})`,
+      );
+    }
+
     await interaction.channel.send({
       content: `Congratulations **${data.name}**, you've been accepted! A moderator will whitelist your account shortly.`,
     });
