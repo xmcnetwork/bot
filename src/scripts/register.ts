@@ -20,7 +20,7 @@ if (!BOT_TOKEN || !APPLICATION_ID) {
 const rest = new REST().setToken(BOT_TOKEN);
 
 (async () => {
-  const commandsPath = path.join(__dirname, "../src/commands");
+  const commandsPath = path.join(__dirname, "../commands");
   const commandFiles = (await fs.readdir(commandsPath)).filter((file) =>
     file.endsWith(".ts"),
   );
