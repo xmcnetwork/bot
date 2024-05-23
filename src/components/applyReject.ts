@@ -10,7 +10,7 @@ import type { ApplicationEmbedPayload } from "./apply";
 import { extractApplicationData } from "../util/minecraft";
 
 module.exports = {
-  customId: "apply:whitelist",
+  customId: "apply:reject",
   async execute(interaction: ButtonInteraction) {
     if (
       !interaction.guildId ||
@@ -28,7 +28,8 @@ module.exports = {
     let data: ApplicationEmbedPayload;
     try {
       data = extractApplicationData(interaction.message);
-    } catch {
+    } catch (e) {
+      console.error(e);
       await interaction.reply({
         content: "Failed to find the data in the thread.",
         ephemeral: true,
@@ -53,41 +54,25 @@ module.exports = {
       return;
     }
 
-    await interaction.editReply({
-      content: `/whitelist add ${data.name}`,
-      embeds: [
-        new EmbedBuilder()
-          .setColor(color)
-          .setTitle("Whitelist")
-          .setDescription(
-            "Copy and run the above command in Minecraft to whitelist the member.",
-          )
-          .addFields(
-            data.id
-              ? []
-              : [
-                  {
-                    name: "Username not verified",
-                    value: `The Minecraft account **${data.name}** may not exist.`,
-                  },
-                ],
-          ),
-      ],
-      allowedMentions: {
-        parse: [],
-      },
-    });
+    await interaction.editReply({ content: "OK" });
 
-    // TODO: run server command through pterodactyl websocket
+    if (
+      process.env.APPLICANT_ROLE_ID &&
+      member.roles.cache.has(process.env.APPLICANT_ROLE_ID)
+    ) {
+      await member.roles.remove(
+        process.env.APPLICANT_ROLE_ID,
+        `Rejected by ${interaction.user.tag} (${interaction.user.id})`,
+      );
+    }
 
     await interaction.channel.send({
-      content: `Congratulations **${data.name}**, you've been accepted! A moderator will whitelist your account shortly.`,
+      content: `Sorry **${data.name}**, your application has not been accepted.`,
     });
 
     await interaction.channel.edit({
-      name: `✅ ${data.name}`.slice(0, 100),
+      name: `❌ ${data.name}`.slice(0, 100),
       archived: true,
-      locked: true,
     });
   },
 };

@@ -1,3 +1,6 @@
+import type { Message } from "discord.js";
+import type { ApplicationEmbedPayload } from "../components/apply";
+
 type MojangErrorData =
   | {
       path: string;
@@ -91,4 +94,10 @@ export const getMinecraftPlayerSkinUrl = (
     url.searchParams.set("default", options.fallback);
   }
   return url.href;
+};
+
+export const extractApplicationData = (message: Message) => {
+  return JSON.parse(
+    new URL(message.embeds[0].url ?? "").searchParams.get("data") ?? "",
+  ) as ApplicationEmbedPayload;
 };
