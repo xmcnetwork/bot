@@ -6,6 +6,8 @@ import {
   TextInputBuilder,
   TextInputStyle,
   type StringSelectMenuInteraction,
+  Routes,
+  type RESTPatchAPIGuildMemberJSONBody,
 } from "discord.js";
 import type { ApplicationEmbedPayload } from "./apply";
 import {
@@ -57,6 +59,7 @@ module.exports = {
                 .setCustomId("ign")
                 .setStyle(TextInputStyle.Short)
                 .setPlaceholder("Your Minecraft Java Edition username")
+                .setValue(data.name)
                 .setRequired(true)
                 .setMinLength(1)
                 .setMaxLength(25),
@@ -93,6 +96,19 @@ module.exports = {
         return;
       }
 
+      const reason = `IGN change requested by ${interaction.user.tag} (${interaction.user.id})`;
+      try {
+        await interaction.client.rest.patch(
+          Routes.guildMember(interaction.guildId, data.user),
+          {
+            body: {
+              nick: playerInfo.name,
+            } satisfies RESTPatchAPIGuildMemberJSONBody,
+            reason,
+          },
+        );
+      } catch {}
+
       await mInteraction.editReply({
         embeds: [
           generateApplicationDataEmbed({
@@ -107,7 +123,7 @@ module.exports = {
       await interaction.channel.edit({
         name: `${emoji} ${playerInfo.name}`.slice(0, 100),
         archived: false,
-        reason: `Name change requested by ${interaction.user.tag} (${interaction.user.id})`,
+        reason,
       });
     }
   },

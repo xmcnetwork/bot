@@ -266,6 +266,12 @@ module.exports = {
       );
       return;
     }
+    try {
+      await member.setNickname(
+        playerInfo?.name ?? ign,
+        "Submitted in application form",
+      );
+    } catch {}
 
     const message = await mInteraction1.editReply({
       content: `Everything looks good so far, **${
