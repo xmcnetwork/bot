@@ -10,8 +10,7 @@ import type { CommandModule } from "../index.js";
 
 dotenv.config();
 
-const { ENVIRONMENT, APPLICATION_ID, BOT_TOKEN, DEVELOPMENT_GUILD_ID } =
-  process.env;
+const { APPLICATION_ID, BOT_TOKEN, GUILD_ID } = process.env;
 
 if (!BOT_TOKEN || !APPLICATION_ID) {
   throw Error("BOT_TOKEN is required");
@@ -46,8 +45,8 @@ const rest = new REST().setToken(BOT_TOKEN);
 
   console.log(
     await rest.put(
-      ENVIRONMENT === "dev" && DEVELOPMENT_GUILD_ID
-        ? Routes.applicationGuildCommands(APPLICATION_ID, DEVELOPMENT_GUILD_ID)
+      GUILD_ID
+        ? Routes.applicationGuildCommands(APPLICATION_ID, GUILD_ID)
         : Routes.applicationCommands(APPLICATION_ID),
       { body: commands },
     ),
