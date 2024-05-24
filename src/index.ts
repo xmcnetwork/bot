@@ -17,11 +17,15 @@ import path from "node:path";
 import {
   getSftpClient,
   type MinecraftServerBan,
-  type MinecraftServerUserCacheItem,
   type MinecraftServerWhitelistItem,
 } from "./util/sftp.js";
-// import { NodeactylClient } from "nodeactyl";
-// import { WebSocket } from "ws";
+import {
+  type PterodactylWebsocketMessage,
+  PterodactylWebsocketMessageEvent,
+  type PterodactylStats,
+} from "./types/pterodactyl.js";
+import { WebSocket } from "ws";
+import { NodeactylClient } from "nodeactyl";
 
 dotenv.config();
 
@@ -46,13 +50,19 @@ if (PTERODACTYL_HOST && PTERODACTYL_KEY && !PTERODACTYL_SERVER_ID) {
 }
 
 export class BotClient<ready extends boolean = boolean> extends Client<ready> {
+  // Discord
   public commands: Record<
     ApplicationCommandType,
     Collection<string, CommandModule>
   >;
   public persistentComponents: Collection<string, ComponentModule>;
-  // public ptero: NodeactylClient | undefined;
-  // public serverStatus: PterodactylStats | undefined;
+
+  // Pterodactyl
+  public ptero: NodeactylClient | undefined;
+  public pteroWs: WebSocket | undefined;
+  public serverStats: PterodactylStats | undefined;
+
+  // SFTP
   public players: Collection<
     string,
     {
@@ -93,8 +103,25 @@ export class BotClient<ready extends boolean = boolean> extends Client<ready> {
     this.serverBans = [];
 
     if (PTERODACTYL_HOST && PTERODACTYL_KEY) {
-      // this.ptero = new NodeactylClient(PTERODACTYL_HOST, PTERODACTYL_KEY);
+      this.ptero = new NodeactylClient(PTERODACTYL_HOST, PTERODACTYL_KEY);
     }
+  }
+
+  async sendMinecraftCommand(command: string): Promise<boolean> {
+    if (!this.ptero) {
+      throw Error("Bot client has no Pterodactyl client");
+    }
+
+    // await this.pteroWs.send(JSON.stringify({
+    // }))
+
+    // This is fine but it doesn't return a command output
+    // so we have to kind of operate blind
+    const result: boolean = await this.ptero.sendServerCommand(
+      PTERODACTYL_SERVER_ID,
+      command,
+    );
+    return result;
   }
 }
 
@@ -209,110 +236,114 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 
-  // Server cache
-  try {
-    console.log("[SFTP] Connecting");
-    const sftp = await getSftpClient();
-    console.log("[SFTP] Caching usercache.json");
-    try {
-      // This is used for autocomplete
-      const usercache = JSON.parse(
-        (await sftp.get("/usercache.json")) as string,
-      ) as MinecraftServerUserCacheItem[];
-      for (const user of usercache) {
-        client.players.set(user.uuid.replace(/-/g, ""), {
-          uuid: user.uuid,
-          name: user.name,
-          // expires: new Date(user.expiresOn),
-        });
+  // Pterodactyl server interop
+  if (client.ptero) {
+    let {
+      token,
+      socket,
+    }: {
+      token: string;
+      socket: string;
+    } = await client.ptero.getConsoleWebSocket(PTERODACTYL_SERVER_ID);
+
+    console.log("[PTERO] Connecting to socket at", socket);
+    const ws = new WebSocket(socket, {
+      // https://stackoverflow.com/a/71628121
+      origin: PTERODACTYL_HOST,
+    });
+    // client.pteroWs = ws;
+
+    const wsAuthenticate = () => {
+      ws.send(
+        JSON.stringify({
+          event: "auth",
+          args: [token],
+        }),
+      );
+    };
+
+    ws.on("error", console.error);
+    ws.on("open", () => {
+      wsAuthenticate();
+      console.log("[PTERO] Opened and authenticated");
+    });
+    ws.on("message", async (raw) => {
+      if (raw instanceof Buffer) {
+        const data = JSON.parse(
+          raw.toString("utf8"),
+        ) as PterodactylWebsocketMessage;
+        switch (data.event) {
+          case PterodactylWebsocketMessageEvent.Stats: {
+            const serverStats: PterodactylStats = JSON.parse(data.args[0]);
+            client.serverStats = serverStats;
+            break;
+          }
+          // case PterodactylWebsocketMessageEvent.
+          case PterodactylWebsocketMessageEvent.TokenExpiring:
+          case PterodactylWebsocketMessageEvent.TokenExpired: {
+            ({ token, socket } = await client.ptero.getConsoleWebSocket(data));
+            wsAuthenticate();
+            break;
+          }
+          default:
+            break;
+        }
       }
-    } catch (e) {
-      // Might not exist, we don't need it
-      console.error(e);
-    }
-    console.log("[SFTP] Caching whitelist.json");
-    try {
-      const whitelist = JSON.parse(
-        (await sftp.get("/whitelist.json")) as string,
-      ) as MinecraftServerWhitelistItem[];
-      client.serverWhitelist = whitelist;
-    } catch (e) {
-      console.error(e);
-    }
-    console.log("[SFTP] Caching banned-players.json");
-    try {
-      const bans = JSON.parse(
-        (await sftp.get("/banned-players.json")) as string,
-      ) as MinecraftServerBan[];
-      client.serverBans = bans;
-    } catch (e) {
-      console.error(e);
-    }
-    console.log("[SFTP] Disconnecting");
-    await sftp.end();
-  } catch (e) {
-    console.error(e);
+    });
+    ws.on("close", (code, reason) => {
+      console.log(
+        `Connection to ${socket} closed with code ${code}: ${reason}`,
+      );
+      if (code === 1000) {
+        return;
+      }
+    });
   }
 
-  // Pterodactyl server interop
-  // if (client.ptero) {
-  //   let {
-  //     token,
-  //     socket,
-  //   }: {
-  //     token: string;
-  //     socket: string;
-  //   } = await client.ptero.getConsoleWebSocket(PTERODACTYL_SERVER_ID);
-
-  //   const ws = new WebSocket(socket, {
-  //     // https://stackoverflow.com/a/71628121
-  //     origin: PTERODACTYL_HOST,
-  //   });
-  //   const wsAuthenticate = () => {
-  //     ws.send(
-  //       JSON.stringify({
-  //         event: "auth",
-  //         args: [token],
-  //       }),
-  //     );
-  //   };
-
-  //   ws.on("error", console.error);
-  //   ws.on("open", () => {
-  //     wsAuthenticate();
-  //   });
-  //   ws.on("message", async (raw) => {
-  //     if (raw instanceof Buffer) {
-  //       const data = JSON.parse(
-  //         raw.toString("utf8"),
-  //       ) as PterodactylWebsocketMessage;
-  //       switch (data.event) {
-  //         case PterodactylWebsocketMessageEvent.Stats: {
-  //           client.serverStatus = JSON.parse(data.args[0]);
-  //           break;
-  //         }
-  //         case PterodactylWebsocketMessageEvent.TokenExpiring:
-  //         case PterodactylWebsocketMessageEvent.TokenExpired: {
-  //           ({ token, socket } = await client.ptero.getConsoleWebSocket(
-  //             PTERODACTYL_SERVER_ID,
-  //           ));
-  //           wsAuthenticate();
-  //           break;
-  //         }
-  //         default:
-  //           break;
-  //       }
+  // Server cache
+  // try {
+  //   console.log("[SFTP] Connecting");
+  //   const sftp = await getSftpClient();
+  //   console.log("[SFTP] Caching usercache.json");
+  //   try {
+  //     // This is used for autocomplete
+  //     const usercache = JSON.parse(
+  //       (await sftp.get("/usercache.json")) as string,
+  //     ) as MinecraftServerUserCacheItem[];
+  //     for (const user of usercache) {
+  //       client.players.set(user.uuid.replace(/-/g, ""), {
+  //         uuid: user.uuid,
+  //         name: user.name,
+  //         // expires: new Date(user.expiresOn),
+  //       });
   //     }
-  //   });
-  //   ws.on("close", (code, reason) => {
-  //     console.log(
-  //       `Connection to ${socket} closed with code ${code}: ${reason}`,
-  //     );
-  //     // if (code === 1000) {
-  //     //   return;
-  //     // }
-  //   });
+  //   } catch (e) {
+  //     // Might not exist, we don't need it
+  //     console.error(e);
+  //   }
+  //   console.log("[SFTP] Caching whitelist.json");
+  //   try {
+  //     const whitelist = JSON.parse(
+  //       (await sftp.get("/whitelist.json")) as string,
+  //     ) as MinecraftServerWhitelistItem[];
+  //     client.serverWhitelist = whitelist;
+  //   } catch (e) {
+  //     console.error(e);
+  //   }
+  //   console.log("[SFTP] Caching banned-players.json");
+  //   try {
+  //     const bans = JSON.parse(
+  //       (await sftp.get("/banned-players.json")) as string,
+  //     ) as MinecraftServerBan[];
+  //     client.serverBans = bans;
+  //   } catch (e) {
+  //     console.error(e);
+  //   }
+  //   console.log("[SFTP] Disconnecting");
+  //   await sftp.end();
+  // } catch (e) {
+  //   console.error(e);
   // }
 
-  client.login(process.env.BOT_TOKEN);
+  await client.login(process.env.BOT_TOKEN);
 })();

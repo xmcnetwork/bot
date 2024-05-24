@@ -1,4 +1,4 @@
-enum PterodactylWebsocketMessageEvent {
+export enum PterodactylWebsocketMessageEvent {
   AuthSuccess = "auth success",
   Status = "status",
   ConsoleOutput = "console output",
@@ -7,21 +7,29 @@ enum PterodactylWebsocketMessageEvent {
   TokenExpired = "token expired",
 }
 
-interface PterodactylWebsocketMessageAuthSuccess {
+// export enum PterodactylWebsocketCommandEvent {
+//   Auth = "auth",
+//   SendStats = "send stats",
+//   SendLogs = "send logs",
+//   SetState = "set state",
+//   SendCommand = "send command",
+// }
+
+export interface PterodactylWebsocketMessageAuthSuccess {
   event: PterodactylWebsocketMessageEvent.AuthSuccess;
 }
 
-interface PterodactylWebsocketMessageStatus {
-  event: "status";
+export interface PterodactylWebsocketMessageStatus {
+  event: PterodactylWebsocketMessageEvent.Status;
   args: string[];
 }
 
-interface PterodactylWebsocketMessageConsoleOutput {
-  event: "console output";
+export interface PterodactylWebsocketMessageConsoleOutput {
+  event: PterodactylWebsocketMessageEvent.ConsoleOutput;
   args: string[];
 }
 
-interface PterodactylStats {
+export interface PterodactylStats {
   /** Percentage, can be over 100 */
   cpu_absolute: number;
   disk_bytes: number;
@@ -33,21 +41,21 @@ interface PterodactylStats {
   uptime: number;
 }
 
-interface PterodactylWebsocketMessageStats {
-  event: "stats";
+export interface PterodactylWebsocketMessageStats {
+  event: PterodactylWebsocketMessageEvent.Stats;
   /** The single arg is deserializable as `PterodactylStats` */
   args: [string];
 }
 
-interface PterodactylWebsocketMessageTokenExpiring {
-  event: "token expiring";
+export interface PterodactylWebsocketMessageTokenExpiring {
+  event: PterodactylWebsocketMessageEvent.TokenExpiring;
 }
 
-interface PterodactylWebsocketMessageTokenExpired {
-  event: "token expired";
+export interface PterodactylWebsocketMessageTokenExpired {
+  event: PterodactylWebsocketMessageEvent.TokenExpired;
 }
 
-type PterodactylWebsocketMessage =
+export type PterodactylWebsocketMessage =
   | PterodactylWebsocketMessageAuthSuccess
   | PterodactylWebsocketMessageStatus
   | PterodactylWebsocketMessageConsoleOutput
