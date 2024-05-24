@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import type { BotClient } from "..";
 import { color } from "../util/meta";
+import type { PterodactylGetServerUsages } from "../types/pterodactyl";
 
 const prettyFileSize = (bytes: number, si = false, dp = 1) => {
   const thresh = si ? 1000 : 1024;
@@ -36,20 +37,17 @@ module.exports = {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   async execute(interaction: ChatInputCommandInteraction) {
     const client = interaction.client as BotClient;
-    if (!client.serverStats) {
-      await interaction.reply({
-        content: "No server stats are available yet.",
-        ephemeral: true,
-      });
-      return;
-    }
 
-    const stat = client.serverStats;
+    const stat: PterodactylGetServerUsages = await client.ptero.getServerUsages(
+      process.env.PTERODACTYL_SERVER_ID,
+    );
+    // TODO: also get maximums
+
     await interaction.reply({
       embeds: [
         new EmbedBuilder()
           .setColor(color)
-          .setTitle(`Server Stats (${stat.state})`)
+          .setTitle(`Server Status (${stat.current_state})`)
           .setURL(
             `${process.env.PTERODACTYL_HOST}/server/${process.env.PTERODACTYL_SERVER_ID}`,
           )
@@ -57,28 +55,27 @@ module.exports = {
             {
               name: "Resource Usage",
               value: [
-                `Disk: ${prettyFileSize(stat.disk_bytes)}`,
-                `Network: 📥 ${prettyFileSize(
-                  stat.network.rx_bytes,
-                )} | 📤 ${prettyFileSize(stat.network.tx_bytes)}`,
+                `Disk: ${prettyFileSize(stat.resources.disk_bytes)}`,
+                `Net: 📥 ${prettyFileSize(
+                  stat.resources.network_rx_bytes,
+                )} 📤 ${prettyFileSize(stat.resources.network_tx_bytes)}`,
               ].join("\n"),
               inline: true,
             },
             {
               name: "Machine Utilization",
               value: [
-                `CPU: ${stat.cpu_absolute}`,
-                `RAM: ${prettyFileSize(stat.memory_bytes)} / ${prettyFileSize(
-                  stat.memory_limit_bytes,
-                )}`,
+                `CPU: ${stat.resources.cpu_absolute.toFixed(2)}%`,
+                `RAM: ${prettyFileSize(stat.resources.memory_bytes)}`,
               ].join("\n"),
               inline: true,
             },
-            {
-              name: "Uptime",
-              value: `${stat.uptime}`,
-              inline: true,
-            },
+            // TODO: pretty time display
+            // {
+            //   name: "Uptime",
+            //   value: `${stat.resources.uptime}`,
+            //   inline: true,
+            // },
           ),
       ],
     });
