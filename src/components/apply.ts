@@ -358,6 +358,10 @@ module.exports = {
       }
     }
 
+    const reviewers = (await guild.members.fetch()).filter((m) =>
+      m.roles.cache.has(process.env.APPLICATIONS_REVIEWER_ROLE_ID),
+    );
+
     const valueMessages: Record<string, string> = {};
     let i = -1;
     for (const embed of embeds) {
@@ -375,13 +379,14 @@ module.exports = {
       // form response while staying below 6000 embed characters per message
       const msg = await thread.send({
         content:
-          i === 0
-            ? `<@&${process.env.APPLICATIONS_REVIEWER_ROLE_ID}>`
-            : undefined,
+          i === 0 ? reviewers.map((m) => `<@${m.id}>`).join("") : undefined,
         embeds: [embed],
       });
       if (customId) {
         valueMessages[customId] = msg.id;
+      }
+      if (i === 0) {
+        msg.edit({ content: null }).catch(() => {});
       }
     }
 

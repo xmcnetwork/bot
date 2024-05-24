@@ -195,8 +195,8 @@ export const generateApplicationDataEmbed = (data: ApplicationEmbedPayload) =>
     .setDescription(
       [
         `Hey **${data.name}**, this is your application thread.\n\n`,
-        "The role that was pinged above is our team of application reviewers. ",
-        "Your application will be briefly discussed and then voted on in private.",
+        "The fellow members of this thread are our team of application reviewers. ",
+        "Your application will be briefly discussed and voted on in private.",
       ].join(""),
     )
     .setThumbnail(
