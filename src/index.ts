@@ -203,7 +203,12 @@ try {
 
 // Manage colored names through Discord roles
 client.on(Events.GuildMemberUpdate, async (before, member) => {
-  if (!client.ptero || member.user.bot) return;
+  if (
+    !client.ptero ||
+    member.user.bot ||
+    !member.roles.cache.has(process.env.MEMBER_ROLE_ID)
+  )
+    return;
   // TODO: store a local map
   const ign = member.displayName;
   if (ign.includes(" ") || ign.length > 25) return;
