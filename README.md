@@ -11,6 +11,7 @@ APPLICATIONS_CHAT_ID
 APPLICATIONS_REVIEWER_ROLE_ID
 CRAFATAR_HOST           # origin of your crafatar instance
 WELCOME_WEBHOOK_URL     # welcomes accepted applicants in the member-only general channel
+COLOR_ROLES             # json string of role id to minecraft team name
 
 SFTP_HOST
 SFTP_PORT               # defaults to 7677 for dedicatedmc.io servers

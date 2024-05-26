@@ -192,6 +192,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
+// Role ID to scoreboard team name
+let colorRoles: Record<string, string> = {};
+try {
+  const colorRolesRaw = process.env.COLOR_ROLES;
+  if (colorRolesRaw) {
+    colorRoles = JSON.parse(colorRolesRaw);
+  }
+} catch {}
+
+// Manage colored names through Discord roles
+client.on(Events.GuildMemberUpdate, async (before, member) => {
+  if (!client.ptero || member.user.bot) return;
+  // TODO: store a local map
+  const ign = member.displayName;
+  if (ign.includes(" ") || ign.length > 25) return;
+
+  // Should already be sorted by role order
+  const colorRole = member.roles.cache.find((role) =>
+    Object.keys(colorRoles).includes(role.id),
+  );
+  if (!colorRole) {
+    await client.sendMinecraftCommand(`team leave ${ign}`);
+    return;
+  }
+
+  const previousColorRole = before.roles.cache.find((role) =>
+    Object.keys(colorRoles).includes(role.id),
+  );
+  if (!!previousColorRole && colorRole.id === previousColorRole.id) return;
+
+  // > Named player needn't to be online, and it even needn't be a real player's name.
+  // https://minecraft.wiki/w/Commands/team
+
+  // We might want to do some more validation before we start storing
+  // actual data for members.
+
+  await client.sendMinecraftCommand(
+    `team join ${colorRoles[colorRole.id]} ${ign}`,
+  );
+});
+
 (async () => {
   // Commands
   const commandsPath = path.join(__dirname, "commands");
