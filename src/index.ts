@@ -110,13 +110,17 @@ export class BotClient<ready extends boolean = boolean> extends Client<ready> {
     // await this.pteroWs.send(JSON.stringify({
     // }))
 
-    // This is fine but it doesn't return a command output
-    // so we have to kind of operate blind
-    const result: boolean = await this.ptero.sendServerCommand(
-      PTERODACTYL_SERVER_ID,
-      command,
-    );
-    return result;
+    try {
+      // This is fine but it doesn't return a command output
+      // so we have to kind of operate blind
+      const result: boolean = await this.ptero.sendServerCommand(
+        PTERODACTYL_SERVER_ID,
+        command,
+      );
+      return result;
+    } catch {
+      return false;
+    }
   }
 }
 
