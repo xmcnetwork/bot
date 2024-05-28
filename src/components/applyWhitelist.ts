@@ -9,6 +9,7 @@ import {
 import { color } from "../util/meta.js";
 import type { ApplicationEmbedPayload } from "./apply.js";
 import { extractApplicationData } from "../util/minecraft.js";
+import type { BotClient } from "../index.js";
 
 module.exports = {
   customId: "apply:whitelist",
@@ -54,32 +55,34 @@ module.exports = {
       return;
     }
 
-    await interaction.editReply({
-      content: `/whitelist add ${data.name}`,
-      embeds: [
-        new EmbedBuilder()
-          .setColor(color)
-          .setTitle("Whitelist")
-          .setDescription(
-            "Copy and run the above command in Minecraft to whitelist the member.",
-          )
-          .addFields(
-            data.id
-              ? []
-              : [
-                  {
-                    name: "Username not verified",
-                    value: `The Minecraft account **${data.name}** may not exist.`,
-                  },
-                ],
-          ),
-      ],
-      allowedMentions: {
-        parse: [],
-      },
-    });
-
-    // TODO: run server command through pterodactyl websocket
+    const client = interaction.client as BotClient;
+    if (data.id) {
+      await client.sendMinecraftCommand(`whitelist add ${data.name}`);
+      client.players.set(data.id, { uuid: data.id, name: data.name });
+      client.serverWhitelist.push({ uuid: data.id, name: data.name });
+      await interaction.editReply({
+        content: "The whitelist command has been run automatically.",
+      });
+    } else {
+      await interaction.editReply({
+        content: `/whitelist add ${data.name}`,
+        embeds: [
+          new EmbedBuilder()
+            .setColor(color)
+            .setTitle("Whitelist")
+            .setDescription(
+              "Copy and run the above command in Minecraft to whitelist the member.",
+            )
+            .addFields({
+              name: "Username not verified",
+              value: `The Minecraft account **${data.name}** may not exist.`,
+            }),
+        ],
+        allowedMentions: {
+          parse: [],
+        },
+      });
+    }
 
     if (
       process.env.MEMBER_ROLE_ID &&
