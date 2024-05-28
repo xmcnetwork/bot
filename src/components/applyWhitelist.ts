@@ -90,6 +90,12 @@ module.exports = {
         `Whitelisted by ${interaction.user.tag} (${interaction.user.id})`,
       );
     }
+    if (!member.roles.cache.has(process.env.APPLICANT_ROLE_ID)) {
+      await member.roles.remove(
+        process.env.APPLICANT_ROLE_ID,
+        `Whitelisted by ${interaction.user.tag} (${interaction.user.id})`,
+      );
+    }
 
     await interaction.channel.send({
       content: `Congratulations **${data.name}**, you've been accepted! A moderator will whitelist your account shortly.`,
