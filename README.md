@@ -28,6 +28,12 @@ We use DedicatedMC.io as our server host (and have since late 2019). They provid
 
 If you are self-hosting this bot and do not use a server with Pterodactyl, you may omit all `PTERODACTYL_` environment variables and still use `SFTP_` variables with your own server (for reading `whitelist.json` & `banned-players.json`). This bot does not commit non-read operations over SFTP.
 
+### The `/list` command
+
+This command relies on your server having a file at `/config/pl3xmap/web/tiles/settings.json` rather than querying the player list through the console since we are currently unable to read the output. Naturally this implies you must use the [Pl3xMap mod](https://modrinth.com/plugin/pl3xmap). If the file is inaccessible, the command will gracefully exit.
+
+In the future, we would like to keep track of this state internally using the server console and not rely on a mod to output it to a file.
+
 ## Store
 
 This bot operates without persistent state. The command `/send-application-message` can be used (by members with the manage guild permission) to send a message with an "Apply" button. Multiple of these may exist at the same time, and while applications will contain themselves within the selected parent, a constant guild environment is required due to role configurations.
