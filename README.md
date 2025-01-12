@@ -11,6 +11,8 @@ APPLICATIONS_CHAT_ID
 APPLICATIONS_REVIEWER_ROLE_ID
 CRAFATAR_HOST           # origin of your crafatar instance
 WELCOME_WEBHOOK_URL     # welcomes accepted applicants in the member-only general channel
+RULES_MESSAGE_ID        # message embeds shown to applicants
+RULES_CHANNEL_ID        # channel id for above
 COLOR_ROLES             # json string of role id to minecraft team name
 
 SFTP_HOST
