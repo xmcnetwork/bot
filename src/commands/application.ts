@@ -28,8 +28,8 @@ module.exports = {
     ]);
     await channel.send({
       content: [
-        "Be sure to read the welcome message! If you just skipped by it, ",
-        "that's fine, press the button to get started. If you have questions, ",
+        "Be sure to read the welcome message! If you just skipped by it,",
+        "that's fine, press the button to get started. If you have questions,",
         "<#911031775302672424> is the place to ask.",
       ].join(" "),
       components: [
