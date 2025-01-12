@@ -11,12 +11,12 @@ import {
   ButtonStyle,
   type MessageComponentInteraction,
   ChannelType,
-  EmbedBuilder,
-  StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder,
+  Routes,
+  type APIEmbed,
+  type APIMessage,
+  WebhookClient,
 } from "discord.js";
 import {
-  generateApplicationDataEmbed,
   type GetAPIUsernameToUUIDResult,
   getMinecraftPlayer,
 } from "../util/minecraft.js";
@@ -25,10 +25,10 @@ import {
   type MinecraftServerBan,
   type MinecraftServerWhitelistItem,
 } from "../util/sftp.js";
-import { color } from "../util/meta.js";
+import type { BotClient } from "../index.js";
 
 const modalStep1 = new ModalBuilder()
-  .setTitle("Apply - Step 1/2")
+  .setTitle("Join - Step 1/2")
   .setCustomId("apply-step-1")
   .addComponents(
     new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -51,49 +51,7 @@ const modalStep1 = new ModalBuilder()
         .setPlaceholder("Your real-life age or general age range (e.g. 18+)")
         .setRequired(true)
         .setMinLength(2)
-        .setMaxLength(100),
-    ),
-  );
-
-const modalStep2 = new ModalBuilder()
-  .setTitle("Apply - Step 2/2")
-  .setCustomId("apply-step-2")
-  .addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder()
-        .setLabel("Did you read & agree with the rules?")
-        .setCustomId("agreed")
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder("(say yes)")
-        .setRequired(true),
-    ),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder()
-        .setLabel("About You")
-        .setCustomId("about")
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder(
-          "Try to include details like your timezone, preferred name, and projects you've enjoyed working on.",
-        )
-        .setRequired(true),
-    ),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder()
-        .setLabel("Screenshots")
-        .setCustomId("screenshots")
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder(
-          "Screenshot links of past projects - this helps add legitimacy. You can add screenshots later.",
-        )
-        .setRequired(false),
-    ),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder()
-        .setLabel("Questions?")
-        .setCustomId("questions")
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder("Speak now or forever hold your peace.")
-        .setRequired(false),
+        .setMaxLength(50),
     ),
   );
 
@@ -112,8 +70,9 @@ module.exports = {
     if (
       interaction.channel?.type !== ChannelType.GuildText ||
       !interaction.guildId
-    )
+    ) {
       return;
+    }
 
     const guild = await interaction.client.guilds.fetch(interaction.guildId);
     const member = await guild.members.fetch({
@@ -174,32 +133,6 @@ module.exports = {
 
     await mInteraction1.deferReply({ ephemeral: true });
 
-    const activeThreads = await interaction.channel.threads.fetchActive(false);
-    const extantActiveThread = activeThreads.threads.find((t) =>
-      t.name.toLowerCase().endsWith(` ${ign.toLowerCase()}`),
-    );
-    if (extantActiveThread) {
-      await mInteraction1.editReply(
-        `You already have an active application thread: <#${extantActiveThread.id}>`,
-      );
-      return;
-    }
-    // const archivedThreads = await interaction.channel.threads.fetchArchived();
-    // const extantArchivedThread = archivedThreads.threads.find(
-    //   (t) => t.name.toLowerCase() === `✅ ${ign.toLowerCase()}`,
-    // );
-    // if (extantArchivedThread) {
-    //   await extantArchivedThread.edit({
-    //     archived: false,
-    //     locked: false,
-    //     name: `⏳ ${ign}`,
-    //   });
-    //   await mInteraction1.editReply(
-    //     `You already have a thread, so it's been restored: <#${extantArchivedThread.id}>`,
-    //   );
-    //   return;
-    // }
-
     let playerInfo: GetAPIUsernameToUUIDResult | undefined;
     try {
       playerInfo = await getMinecraftPlayer(ign);
@@ -232,7 +165,6 @@ module.exports = {
           );
         } catch (e) {
           console.error(e);
-          await sftp.end();
         } finally {
           await sftp.end();
         }
@@ -274,25 +206,58 @@ module.exports = {
       );
     } catch {}
 
-    const message = await mInteraction1.editReply({
-      content: `Everything looks good so far, **${
-        playerInfo?.name ?? ign
-      }**! Click the button to continue your application.`,
+    let content = `Everything looks good so far, **${
+      playerInfo?.name ?? ign
+    }**! All that's left is to read the rules, make sure you agree, then click the button to join the server.`;
+    let ruleEmbeds: APIEmbed[] = [];
+    const { RULES_CHANNEL_ID, RULES_MESSAGE_ID } = process.env;
+    if (RULES_CHANNEL_ID && RULES_MESSAGE_ID) {
+      try {
+        const rulesMsg = (await interaction.client.rest.get(
+          Routes.channelMessage(RULES_CHANNEL_ID, RULES_MESSAGE_ID),
+        )) as APIMessage;
+        ruleEmbeds = rulesMsg.embeds;
+      } catch {}
+    }
+    if (ruleEmbeds.length === 0) {
+      if (RULES_CHANNEL_ID) {
+        content += ` Read the rules here: <#${RULES_CHANNEL_ID}>`;
+      } else {
+        content += " See the rules channel in the sidebar or channel list.";
+      }
+    }
+
+    let message = await mInteraction1.editReply({
+      content,
+      embeds: ruleEmbeds.length === 0 ? undefined : ruleEmbeds,
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId("continue")
-            .setLabel("Continue")
-            .setStyle(ButtonStyle.Primary),
+            .setCustomId("agree")
+            .setLabel("I Agree (60s)")
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(true),
         ),
       ],
     });
+    const steps = [50, 40, 30, 20, 10, 0];
+    for (const step of steps) {
+      await new Promise((r) => setTimeout(r, 10_000));
+      message = await mInteraction1.editReply({
+        components: [
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId("agree")
+              .setLabel(step === 0 ? "I Agree" : `I Agree (${step}s)`)
+              .setStyle(ButtonStyle.Primary)
+              .setDisabled(step !== 0),
+          ),
+        ],
+      });
+    }
 
     let step2Interaction: MessageComponentInteraction;
     try {
-      // I want this to continue listening in case the user closes the modal
-      // by accident and wants to re-open it, but the code structure just
-      // isn't right for it
       step2Interaction = await message.awaitMessageComponent({
         dispose: false,
         // 10 minutes
@@ -300,141 +265,61 @@ module.exports = {
       });
     } catch {
       await mInteraction1.editReply({
-        content: "Timed out, press the apply button again to start over.",
+        content: "Timed out, press the join button again to start over.",
+        embeds: [],
         components: [],
       });
       return;
     }
 
-    const modal2 = modalStep2.toJSON();
-    modal2.custom_id += `:${String(Math.floor(Math.random() * 100000))}`;
-    await step2Interaction.showModal(modal2);
-    let mInteraction2: ModalSubmitInteraction;
-    try {
-      mInteraction2 = await interaction.awaitModalSubmit({
-        filter: (i) =>
-          i.customId === modal2.custom_id && i.user === interaction.user,
-        dispose: true,
-        // 1 hour
-        time: 3_600_000,
-      });
-    } catch {
-      // It's too late to send a followup
-      return;
-    }
+    await step2Interaction.deferUpdate();
 
-    await mInteraction2.deferUpdate();
-    const thread = await interaction.channel.threads.create({
-      name: `⏳ ${playerInfo?.name ?? ign}`.slice(0, 100),
-      type: ChannelType.PrivateThread,
-      invitable: false,
-      reason: `Application by ${interaction.user.tag} (${interaction.user.id})`,
+    const client = interaction.client as BotClient;
+    await client.sendMinecraftCommand(`whitelist add ${playerInfo.name}`);
+    client.players.set(interaction.user.id, {
+      uuid: interaction.user.id,
+      name: playerInfo.name,
+    });
+    client.serverWhitelist.push({
+      uuid: interaction.user.id,
+      name: playerInfo.name,
     });
 
-    const embeds: EmbedBuilder[] = [];
-    for (const row of mInteraction2.fields.components) {
-      for (const component of row.components) {
-        const field = modalStep2
-          .toJSON()
-          .components.find(
-            (r) =>
-              !!r.components.find((c) => c.custom_id === component.customId),
-          )?.components[0];
-
-        const embed = new EmbedBuilder()
-          .setColor(color)
-          .setTitle(field?.label ?? component.customId)
-          .setDescription(component.value || "no response")
-          .setFooter({ text: component.customId });
-
-        if (component.customId === "about") {
-          embed.addFields({
-            name: "Age",
-            value: age,
-          });
-        }
-
-        embeds.push(embed);
-      }
+    if (
+      process.env.MEMBER_ROLE_ID &&
+      !member.roles.cache.has(process.env.MEMBER_ROLE_ID)
+    ) {
+      await member.roles.add(
+        process.env.MEMBER_ROLE_ID,
+        `Whitelisted automatically (age: ${age}, ign: ${playerInfo.name})`,
+      );
+    }
+    if (member.roles.cache.has(process.env.APPLICANT_ROLE_ID)) {
+      await member.roles.remove(
+        process.env.APPLICANT_ROLE_ID,
+        `Whitelisted automatically (age: ${age}, ign: ${playerInfo.name})`,
+      );
     }
 
-    const reviewers = (await guild.members.fetch()).filter((m) =>
-      m.roles.cache.has(process.env.APPLICATIONS_REVIEWER_ROLE_ID),
-    );
-
-    const valueMessages: Record<string, string> = {};
-    let i = -1;
-    for (const embed of embeds) {
-      i += 1;
-      if (i === 0) {
-        embed.setAuthor({
-          name: `${playerInfo?.name ?? ign}'s application`,
-          iconURL: interaction.user.displayAvatarURL({ size: 128 }),
-        });
-      }
-      const customId = embed.data.footer?.text;
-      embed.setFooter(null);
-
-      // We do this so we can send the entire content of each up-to-4000-character
-      // form response while staying below 6000 embed characters per message
-      const msg = await thread.send({
-        content:
-          i === 0 ? reviewers.map((m) => `<@${m.id}>`).join("") : undefined,
-        embeds: [embed],
-      });
-      if (customId) {
-        valueMessages[customId] = msg.id;
-      }
-      if (i === 0) {
-        msg.edit({ content: null }).catch(() => {});
-      }
-    }
-
-    // This creates a system message that we use to separate the form response
-    // messages from the data message
-    await thread.members.add(interaction.user, "Applicant");
-
-    const dataMessage = await thread.send({
-      embeds: [
-        generateApplicationDataEmbed({
-          user: interaction.user.id,
-          id: playerInfo?.id,
-          name: playerInfo?.name ?? ign,
-          values: valueMessages,
-        }),
-      ],
-      components: [
-        new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-          new StringSelectMenuBuilder()
-            .setPlaceholder("Application options")
-            .setCustomId("persistent:apply:modify")
-            .addOptions(
-              new StringSelectMenuOptionBuilder()
-                .setLabel("Change IGN")
-                .setDescription("If you entered your username incorrectly")
-                .setValue("ign")
-                .setEmoji({ name: "✍️" }),
-            ),
-        ),
-        new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setStyle(ButtonStyle.Primary)
-            .setLabel("Whitelist")
-            .setCustomId("persistent:apply:whitelist"),
-          new ButtonBuilder()
-            .setStyle(ButtonStyle.Danger)
-            .setLabel("Reject")
-            .setCustomId("persistent:apply:reject"),
-        ),
-      ],
-    });
-    try {
-      await dataMessage.pin();
-    } catch {}
-
-    await mInteraction2.editReply({
-      content: `Great job! Your application thread has been created: <#${thread.id}>`,
+    await step2Interaction.editReply({
+      content:
+        "Great job! You have been whitelisted and should be able to access the rest of the server.",
+      embeds: [],
       components: [],
     });
+
+    if (process.env.WELCOME_WEBHOOK_URL) {
+      const webhook = new WebhookClient({
+        url: process.env.WELCOME_WEBHOOK_URL,
+      });
+      await webhook.send({
+        content: [
+          `Please welcome <@${interaction.user.id}> (**${playerInfo.name}**)!`,
+          "",
+          "-# REMINDER: This member was not manually approved ([we changed the application process](https://discord.com/channels/565315993807880223/849241298611601439/1327371818822275136)). Contact an admin if they seem to be causing trouble.",
+        ].join("\n"),
+        allowedMentions: { users: [interaction.user.id] },
+      });
+    }
   },
 };
