@@ -4,47 +4,62 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { color } from "../util/meta";
-import { getSftpFile } from "../util/sftp";
 
-interface Pl3xMapTileSettings {
-  format: string;
-  maxPlayers: number;
-  lang: {
-    title: string;
-    langFile: string;
-    blockInfo: {
-      unknown: { biome: string; block: string };
-      value: string;
-      label: string;
-    };
-    coords: { label: string; value: string };
-    layers: { label: string; value: string };
-    link: { label: string; value: string };
-    markers: { label: string; value: string };
-    players: {
-      label: string;
-      value: string;
-    };
-    worlds: { label: string; value: string };
+// interface Pl3xMapTileSettings {
+//   format: string;
+//   maxPlayers: number;
+//   lang: {
+//     title: string;
+//     langFile: string;
+//     blockInfo: {
+//       unknown: { biome: string; block: string };
+//       value: string;
+//       label: string;
+//     };
+//     coords: { label: string; value: string };
+//     layers: { label: string; value: string };
+//     link: { label: string; value: string };
+//     markers: { label: string; value: string };
+//     players: {
+//       label: string;
+//       value: string;
+//     };
+//     worlds: { label: string; value: string };
+//   };
+//   zoom: { snap: number; delta: number; wheel: number };
+//   players: {
+//     name: string;
+//     uuid: string;
+//     displayName: string;
+//     world: string;
+//     position: { x: number; z: number };
+//   }[];
+//   worldSettings: {
+//     name: string;
+//     displayName: string;
+//     type: string;
+//     order: number;
+//     renderers: {
+//       value: string;
+//       label: string;
+//       icon: string;
+//     }[];
+//   };
+// }
+
+interface BlueMapPlayer {
+  uuid: string;
+  name: string;
+  foreign: boolean;
+  position: {
+    x: number;
+    y: number;
+    z: number;
   };
-  zoom: { snap: number; delta: number; wheel: number };
-  players: {
-    name: string;
-    uuid: string;
-    displayName: string;
-    world: string;
-    position: { x: number; z: number };
-  }[];
-  worldSettings: {
-    name: string;
-    displayName: string;
-    type: string;
-    order: number;
-    renderers: {
-      value: string;
-      label: string;
-      icon: string;
-    }[];
+  rotation: {
+    pitch: number;
+    yaw: number;
+    roll: number;
   };
 }
 
@@ -55,39 +70,37 @@ module.exports = {
   async execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply({ ephemeral: true });
 
-    let file: string;
-    try {
-      file = (await getSftpFile(
-        "config/pl3xmap/web/tiles/settings.json",
-      )) as string;
-    } catch {
-      await interaction.editReply({
-        content: "The server is missing a necessary file for this command.",
-      });
+    const randomNumber = String(Math.floor(Math.random() * 1000000));
+    const response = await fetch(
+      `https://map.xmcnet.work/maps/xmc7/live/players.json?${randomNumber}`,
+      { method: "GET" },
+    ).then((r) => r.json());
+    if (!response.players) {
+      await interaction.editReply({ content: "Unable to fetch players." });
       return;
     }
+    const players = response.players as BlueMapPlayer[];
 
-    const { players, maxPlayers } = JSON.parse(file) as Pl3xMapTileSettings;
-
+    const maxPlayers = 40;
     await interaction.editReply({
       embeds: [
         new EmbedBuilder()
           .setColor(color)
           .setTitle(`Players - ${players.length}/${maxPlayers}`)
           .setDescription(
-            players
-              .map((player) => {
-                const member = interaction.guild.members.cache.find(
-                  (member) =>
-                    member.displayName.toLowerCase() ===
-                    player.name.toLowerCase(),
-                );
-                return `- ${
-                  member ? `<@${member.id}>` : player.name
-                } (${player.world.split(":")[1].replace(/_/g, " ")})`;
-              })
-              .join("\n")
-              .slice(0, 4096),
+            players.length === 0
+              ? null
+              : players
+                  .map((player) => {
+                    const member = interaction.guild.members.cache.find(
+                      (member) =>
+                        member.displayName.toLowerCase() ===
+                        player.name.toLowerCase(),
+                    );
+                    return `- ${member ? `<@${member.id}>` : player.name}`;
+                  })
+                  .join("\n")
+                  .slice(0, 4096),
           ),
       ],
     });
