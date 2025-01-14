@@ -276,6 +276,12 @@ module.exports = {
 
     const client = interaction.client as BotClient;
     await client.sendMinecraftCommand(`whitelist add ${playerInfo.name}`);
+    if (process.env.PTERODACTYL_CREATIVE_SERVER_ID) {
+      await client.sendMinecraftCommand(
+        `whitelist add ${playerInfo.name}`,
+        process.env.PTERODACTYL_CREATIVE_SERVER_ID,
+      );
+    }
     client.players.set(interaction.user.id, {
       uuid: interaction.user.id,
       name: playerInfo.name,
@@ -295,10 +301,7 @@ module.exports = {
       );
     }
     if (member.roles.cache.has(process.env.APPLICANT_ROLE_ID)) {
-      await member.roles.remove(
-        process.env.APPLICANT_ROLE_ID,
-        `Whitelisted automatically (age: ${age}, ign: ${playerInfo.name})`,
-      );
+      await member.roles.remove(process.env.APPLICANT_ROLE_ID);
     }
 
     await step2Interaction.editReply({

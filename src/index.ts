@@ -102,7 +102,10 @@ export class BotClient<ready extends boolean = boolean> extends Client<ready> {
     }
   }
 
-  async sendMinecraftCommand(command: string): Promise<boolean> {
+  async sendMinecraftCommand(
+    command: string,
+    serverId?: string,
+  ): Promise<boolean> {
     if (!this.ptero) {
       throw Error("Bot client has no Pterodactyl client");
     }
@@ -114,7 +117,7 @@ export class BotClient<ready extends boolean = boolean> extends Client<ready> {
       // This is fine but it doesn't return a command output
       // so we have to kind of operate blind
       const result: boolean = await this.ptero.sendServerCommand(
-        PTERODACTYL_SERVER_ID,
+        serverId ?? PTERODACTYL_SERVER_ID,
         command,
       );
       return result;
