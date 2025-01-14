@@ -15,6 +15,7 @@ import {
   type APIEmbed,
   type APIMessage,
   WebhookClient,
+  RouteBases,
 } from "discord.js";
 import {
   type GetAPIUsernameToUUIDResult,
@@ -275,7 +276,16 @@ module.exports = {
     await step2Interaction.deferUpdate();
 
     const client = interaction.client as BotClient;
-    await client.sendMinecraftCommand(`whitelist add ${playerInfo.name}`);
+
+    const now = new Date();
+    const upcomingStartDate =
+      client.nextStartDate && client.nextStartDate.getTime() - now.getTime() > 0
+        ? client.nextStartDate
+        : null;
+
+    if (!upcomingStartDate) {
+      await client.sendMinecraftCommand(`whitelist add ${playerInfo.name}`);
+    }
     if (process.env.PTERODACTYL_CREATIVE_SERVER_ID) {
       await client.sendMinecraftCommand(
         `whitelist add ${playerInfo.name}`,
@@ -305,8 +315,15 @@ module.exports = {
     }
 
     await step2Interaction.editReply({
-      content:
-        "Great job! You have been whitelisted and should be able to access the rest of the server.",
+      content: upcomingStartDate
+        ? `Great job! You should be able to access the rest of the server. The [season begins](${
+            RouteBases.scheduledEvent
+          }/${process.env.GUILD_ID}/${
+            process.env.NEXT_START_EVENT_ID
+          }) on ${time(
+            upcomingStartDate,
+          )}, in the meantime you have already been whitelisted on the creative server.`
+        : "Great job! You have been whitelisted and should be able to access the rest of the server.",
       embeds: [],
       components: [],
     });

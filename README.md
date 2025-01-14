@@ -14,6 +14,7 @@ WELCOME_WEBHOOK_URL     # welcomes accepted applicants in the member-only genera
 RULES_MESSAGE_ID        # message embeds shown to applicants
 RULES_CHANNEL_ID        # channel id for above
 COLOR_ROLES             # json string of role id to minecraft team name
+NEXT_START_EVENT_ID     # event ID for the time that the next season starts. requires GUILD_ID
 
 SFTP_HOST
 SFTP_PORT               # defaults to 7677 for dedicatedmc.io servers

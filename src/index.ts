@@ -1,5 +1,6 @@
 import {
   ActivityType,
+  type APIGuildScheduledEvent,
   ApplicationCommandType,
   type AutocompleteInteraction,
   Client,
@@ -9,6 +10,7 @@ import {
   Events,
   GatewayIntentBits,
   type MessageComponentInteraction,
+  Routes,
   type SlashCommandBuilder,
 } from "discord.js";
 import dotenv from "dotenv";
@@ -68,6 +70,7 @@ export class BotClient<ready extends boolean = boolean> extends Client<ready> {
   >;
   public serverWhitelist: MinecraftServerWhitelistItem[];
   public serverBans: MinecraftServerBan[];
+  public nextStartDate?: Date = undefined;
 
   constructor() {
     super({
@@ -429,4 +432,20 @@ client.on(Events.GuildMemberRemove, async (member) => {
   }
 
   await client.login(process.env.BOT_TOKEN);
+
+  if (process.env.NEXT_START_EVENT_ID && process.env.GUILD_ID) {
+    try {
+      const event = (await client.rest.get(
+        Routes.guildScheduledEvent(
+          process.env.GUILD_ID,
+          process.env.NEXT_START_EVENT_ID,
+        ),
+      )) as APIGuildScheduledEvent;
+      client.nextStartDate = new Date(event.scheduled_start_time);
+    } catch {
+      console.log(
+        "[warn] NEXT_START_EVENT_ID was defined but it could not be retrieved.",
+      );
+    }
+  }
 })();
