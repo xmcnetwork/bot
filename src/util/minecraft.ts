@@ -116,12 +116,18 @@ export const getMinecraftPlayerSkinUrl = (
      * @default string - Steve or Alex based on UUID
      */
     fallback?: string;
+    /**
+     * Whether to include a `.png` extension on the returned URL
+     *
+     * @default false
+     */
+    extension?: boolean;
   },
 ) => {
   const url = new URL(
     `${CRAFATAR_HOST}/${
       options.render === "face" ? "avatars" : `renders/${options.render}`
-    }/${uuid}`,
+    }/${uuid}${options.extension ? ".png" : ""}`,
   );
   if (options.size && options.render === "face") {
     url.searchParams.set("size", options.size.toString());

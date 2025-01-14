@@ -99,6 +99,10 @@ module.exports = {
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
+            .setCustomId("persistent:face")
+            .setStyle(ButtonStyle.Primary)
+            .setLabel("Download Face"),
+          new ButtonBuilder()
             .setStyle(ButtonStyle.Link)
             .setURL(`https://mine.ly/${playerInfo.name}`)
             .setLabel("NameMC"),
