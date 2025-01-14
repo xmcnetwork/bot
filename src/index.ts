@@ -125,6 +125,13 @@ export class BotClient<ready extends boolean = boolean> extends Client<ready> {
       return false;
     }
   }
+
+  async tellAdmins(message: string, serverId?: string): Promise<boolean> {
+    return await this.sendMinecraftCommand(
+      `tell @a[tag=admin] ${message}`,
+      serverId,
+    );
+  }
 }
 
 const client = new BotClient();
@@ -243,6 +250,34 @@ client.on(Events.GuildMemberUpdate, async (before, member) => {
   await client.sendMinecraftCommand(
     `team join ${colorRoles[colorRole.id]} ${ign}`,
   );
+});
+
+client.on(Events.GuildMemberRemove, async (member) => {
+  if (
+    !client.ptero ||
+    member.user.bot ||
+    !member.roles.cache.has(process.env.MEMBER_ROLE_ID)
+  )
+    return;
+
+  // TODO: store a local map
+  const ign = member.displayName;
+  if (ign.includes(" ") || ign.length > 25) return;
+
+  await client.sendMinecraftCommand(`whitelist remove ${ign}`);
+  await client.tellAdmins(
+    `${ign} left the server and was removed from the whitelist`,
+  );
+  if (process.env.PTERODACTYL_CREATIVE_SERVER_ID) {
+    await client.sendMinecraftCommand(
+      `whitelist remove ${ign}`,
+      process.env.PTERODACTYL_CREATIVE_SERVER_ID,
+    );
+    await client.tellAdmins(
+      `${ign} left the server and was removed from the whitelist`,
+      process.env.PTERODACTYL_CREATIVE_SERVER_ID,
+    );
+  }
 });
 
 (async () => {
