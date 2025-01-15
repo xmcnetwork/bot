@@ -44,12 +44,19 @@ export interface GetAPIUUIDToProfileResult {
 export type PlayerInfo = GetAPIUUIDToProfileResult | GetAPIUsernameToUUIDResult;
 
 export const getMinecraftPlayer = async (ign: string) => {
+  console.log(`Resolving IGN ${ign} from Mojang`);
   const response = await fetch(
     `https://api.mojang.com/users/profiles/minecraft/${ign}`,
     { method: "GET" },
   );
   if (!response.ok) {
-    const data = (await response.json()) as MojangErrorData;
+    const raw = await response.text();
+    let data: MojangErrorData;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      throw new Error(`[${response.status}] ${raw}`);
+    }
     throw new Error(`[${response.status}] ${data.errorMessage}`);
   }
   if (response.status === 204) {
@@ -60,6 +67,7 @@ export const getMinecraftPlayer = async (ign: string) => {
 };
 
 export const getMinecraftUUIDProfile = async (uuid: string) => {
+  console.log(`Resolving UUID ${uuid} from Mojang`);
   const response = await fetch(
     `https://sessionserver.mojang.com/session/minecraft/profile/${uuid}`,
     { method: "GET" },

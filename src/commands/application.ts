@@ -36,7 +36,7 @@ module.exports = {
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
             .setStyle(ButtonStyle.Primary)
-            .setLabel("Join")
+            .setLabel("Apply")
             .setCustomId("persistent:apply:1"),
         ),
       ],

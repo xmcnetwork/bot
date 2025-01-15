@@ -5,6 +5,9 @@ import {
   type GuildMember,
   EmbedBuilder,
   WebhookClient,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } from "discord.js";
 import { color } from "../util/meta.js";
 import type { ApplicationEmbedPayload } from "./apply.js";
@@ -58,29 +61,49 @@ module.exports = {
     const client = interaction.client as BotClient;
     if (data.id) {
       await client.sendMinecraftCommand(`whitelist add ${data.name}`);
+      if (process.env.PTERODACTYL_CREATIVE_SERVER_ID) {
+        await client.sendMinecraftCommand(
+          `whitelist add ${data.name}`,
+          process.env.PTERODACTYL_CREATIVE_SERVER_ID,
+        );
+      }
+
       client.players.set(data.id, { uuid: data.id, name: data.name });
       client.serverWhitelist.push({ uuid: data.id, name: data.name });
       await interaction.editReply({
         content: "The whitelist command has been run automatically.",
       });
     } else {
+      const embed = new EmbedBuilder()
+        .setColor(color)
+        .setTitle("Whitelist")
+        .setDescription(
+          "Copy and run the above command in Minecraft to whitelist the member.",
+        )
+        .addFields({
+          name: "Username not verified",
+          value: `The Minecraft account [**${data.name}**](https://mine.ly/${data.name}) may not exist.`,
+          inline: true,
+        });
+      if (process.env.PTERODACTYL_HOST && process.env.PTERODACTYL_SERVER_ID) {
+        embed.addFields({
+          name: "Panel",
+          value: [
+            `[Main server](${process.env.PTERODACTYL_HOST}/server/${process.env.PTERODACTYL_SERVER_ID})`,
+            process.env.PTERODACTYL_CREATIVE_SERVER_ID
+              ? `[Creative server](${process.env.PTERODACTYL_HOST}/server/${process.env.PTERODACTYL_CREATIVE_SERVER_ID})`
+              : "",
+          ]
+            .join("\n")
+            .trim(),
+          inline: true,
+        });
+      }
+
       await interaction.editReply({
         content: `/whitelist add ${data.name}`,
-        embeds: [
-          new EmbedBuilder()
-            .setColor(color)
-            .setTitle("Whitelist")
-            .setDescription(
-              "Copy and run the above command in Minecraft to whitelist the member.",
-            )
-            .addFields({
-              name: "Username not verified",
-              value: `The Minecraft account **${data.name}** may not exist.`,
-            }),
-        ],
-        allowedMentions: {
-          parse: [],
-        },
+        embeds: [embed],
+        allowedMentions: { parse: [] },
       });
     }
 
