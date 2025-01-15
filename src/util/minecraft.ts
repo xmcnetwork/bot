@@ -17,7 +17,19 @@ type MojangErrorData =
       errorMessage: string;
     };
 
+type MinetoolsErrorData = {
+  error: string;
+  status: "ERR";
+};
+
 export interface GetAPIUsernameToUUIDResult {
+  cache?: {
+    HIT: boolean;
+    cache_time: number;
+    cache_time_left: number;
+    cached_at: number;
+    cached_until: number;
+  };
   name: string;
   id: string;
   legacy?: true;
@@ -41,23 +53,36 @@ export interface GetAPIUUIDToProfileResult {
   profileActions: MinecraftProfileAction[];
 }
 
+export interface GetMinetoolsAPIUUIDToProfileResult {
+  decoded: {
+    profileId: string;
+    profileName: string;
+    signatureRequired?: boolean;
+    textures: {
+      CAPE?: { url: string };
+      SKIN?: { url: string };
+    };
+    timestamp: number;
+  };
+  raw: GetAPIUUIDToProfileResult;
+}
+
 export type PlayerInfo = GetAPIUUIDToProfileResult | GetAPIUsernameToUUIDResult;
 
 export const getMinecraftPlayer = async (ign: string) => {
-  console.log(`Resolving IGN ${ign} from Mojang`);
-  const response = await fetch(
-    `https://api.mojang.com/users/profiles/minecraft/${ign}`,
-    { method: "GET" },
-  );
+  console.log(`Resolving IGN ${ign} from Minetools`);
+  const response = await fetch(`https://api.minetools.eu/uuid/${ign}`, {
+    method: "GET",
+  });
   if (!response.ok) {
     const raw = await response.text();
-    let data: MojangErrorData;
+    let data: MinetoolsErrorData;
     try {
       data = JSON.parse(raw);
     } catch {
       throw new Error(`[${response.status}] ${raw}`);
     }
-    throw new Error(`[${response.status}] ${data.errorMessage}`);
+    throw new Error(`[${response.status}] ${data.error}`);
   }
   if (response.status === 204) {
     throw new Error("Failed to fetch player");
@@ -67,20 +92,19 @@ export const getMinecraftPlayer = async (ign: string) => {
 };
 
 export const getMinecraftUUIDProfile = async (uuid: string) => {
-  console.log(`Resolving UUID ${uuid} from Mojang`);
-  const response = await fetch(
-    `https://sessionserver.mojang.com/session/minecraft/profile/${uuid}`,
-    { method: "GET" },
-  );
+  console.log(`Resolving UUID ${uuid} from Minetools`);
+  const response = await fetch(`https://api.minetools.eu/profile/${uuid}`, {
+    method: "GET",
+  });
   if (!response.ok) {
-    const data = (await response.json()) as MojangErrorData;
-    throw new Error(`[${response.status}] ${data.errorMessage}`);
+    const data = (await response.json()) as MinetoolsErrorData;
+    throw new Error(`[${response.status}] ${data.error}`);
   }
   if (response.status === 204) {
     throw new Error("Failed to fetch profile");
   }
-  const data = (await response.json()) as GetAPIUUIDToProfileResult;
-  return data;
+  const data = (await response.json()) as GetMinetoolsAPIUUIDToProfileResult;
+  return data.raw;
 };
 
 export const hyphenateUUID = (uuid: string) => {
